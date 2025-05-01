@@ -203,6 +203,62 @@ Sera.Float64 = table.freeze({
 	end,
 })
 
+Sera.Float64Table = table.freeze({
+	Name = "Float64Table",
+	Ser = function(b: buffer, offset: number, value: {number}): number
+		local count = #value
+		buffer.writeu16(b, offset, count)
+		for i = 1, count do
+			buffer.writef64(b, offset + 2 + (i - 1) * 8, value[i])
+		end
+		return offset + 2 + count * 8
+	end,
+	Des = function(b: buffer, offset: number): ({number}, number)
+		local count = buffer.readu16(b, offset)
+		local value = table.create(count)
+		for i = 1, count do
+			value[i] = buffer.readf64(b, offset + 2 + (i - 1) * 8)
+		end
+		return value, offset + 2 + count * 8
+	end,
+})
+
+Sera.String32Table = table.freeze({
+	Name = "String32Table",
+	Ser = function(b: buffer, offset: number, value: {string}): number
+		local count = #value
+		buffer.writeu16(b, offset, count)
+
+		local pos = offset + 2
+		for i = 1, count do
+			local str = value[i]
+			local length = str:len()
+			if length > SIZE_32 then
+				error("String too long in String32Table")
+			end
+			buffer.writeu32(b, pos, length)
+			buffer.writestring(b, pos + 4, str)
+			pos += 4 + length
+		end
+
+		return pos
+	end,
+
+	Des = function(b: buffer, offset: number): ({string}, number)
+		local count = buffer.readu16(b, offset)
+		local result = table.create(count)
+
+		local pos = offset + 2
+		for i = 1, count do
+			local length = buffer.readu32(b, pos)
+			result[i] = buffer.readstring(b, pos + 4, length)
+			pos += 4 + length
+		end
+
+		return result, pos
+	end,
+})
+
 Sera.CFrame = table.freeze({
 	Name = "CFrame",
 	Ser = function(b: buffer, offset: number, value: CFrame): number
